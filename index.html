@@ -1,0 +1,370 @@
+import { useState, useMemo } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
+
+// ── DATOS CRUDOS: todas las encuestas del CSV, promediadas después ──
+// formato: {f: "YYYY-MM-DD", enc: "Nombre", datos: {candidato: pct}}
+const RAW = [
+  // 2018
+  {f:"2018-04-10",enc:"Criteria",d:{Lavín:3,Kast:10,Matthei:0,Jadue:0}},
+  {f:"2018-07-27",enc:"Criteria",d:{Lavín:6,Matthei:5,Kast:7,Jadue:0}},
+  {f:"2018-09-27",enc:"Criteria",d:{Lavín:4,Matthei:2,Kast:9,Jadue:3,Bachelet:1}},
+  {f:"2018-10-29",enc:"Criteria",d:{Lavín:3,Matthei:4,Kast:8,Jadue:2,Bachelet:4}},
+  {f:"2018-11-26",enc:"Criteria",d:{Lavín:5,Matthei:2,Kast:8,Jadue:4,Bachelet:3}},
+  {f:"2018-12-23",enc:"Criteria",d:{Lavín:6,Matthei:3,Kast:12,Jadue:4,Bachelet:3}},
+  // 2019
+  {f:"2019-01-10",enc:"Cadem",d:{Lavín:6,Matthei:1,Kast:7,Jadue:3,Bachelet:6}},
+  {f:"2019-01-20",enc:"Criteria",d:{Lavín:8,Matthei:2,Kast:10,Jadue:3,Bachelet:3}},
+  {f:"2019-02-12",enc:"Criteria",d:{Lavín:9,Matthei:3,Kast:11,Jadue:3,Bachelet:4}},
+  {f:"2019-03-20",enc:"Activa",d:{Lavín:8,Matthei:2,Kast:8,Jadue:2,Bachelet:7}},
+  {f:"2019-03-25",enc:"Criteria",d:{Lavín:9,Matthei:2,Kast:10,Jadue:3,Bachelet:6}},
+  {f:"2019-04-23",enc:"Criteria",d:{Lavín:10,Matthei:2,Kast:10,Jadue:5,Bachelet:5}},
+  {f:"2019-05-22",enc:"Criteria",d:{Lavín:11,Matthei:2,Kast:9,Jadue:6,Bachelet:5}},
+  {f:"2019-05-22",enc:"Activa",d:{Lavín:8,Matthei:3,Kast:11,Jadue:4,Bachelet:8}},
+  {f:"2019-06-27",enc:"Criteria",d:{Lavín:17,Matthei:2,Kast:11,Jadue:6,Bachelet:5}},
+  {f:"2019-07-10",enc:"Cadem",d:{Lavín:9,Matthei:1,Kast:5,Jadue:3,Bachelet:5}},
+  {f:"2019-07-20",enc:"Activa",d:{Lavín:11,Matthei:3,Kast:9,Jadue:4,Bachelet:7}},
+  {f:"2019-08-16",enc:"Criteria",d:{Lavín:16,Matthei:0,Kast:12,Jadue:5,Bachelet:7}},
+  {f:"2019-09-24",enc:"Criteria",d:{Lavín:17,Matthei:2,Kast:12,Jadue:4,Bachelet:6}},
+  {f:"2019-09-15",enc:"Activa",d:{Lavín:13,Matthei:0,Kast:9,Jadue:5,Bachelet:7}},
+  {f:"2019-10-20",enc:"Criteria",d:{Lavín:14,Matthei:2,Kast:9,Jadue:5,Bachelet:0}},
+  {f:"2019-10-20",enc:"Activa",d:{Lavín:10,Matthei:0,Kast:7,Jadue:3,Bachelet:7}},
+  {f:"2019-10-29",enc:"Cadem",d:{Lavín:6,Matthei:0,Kast:2,Jadue:3,Bachelet:2}},
+  {f:"2019-11-24",enc:"Criteria",d:{Lavín:8,Matthei:0,Kast:8,Jadue:7,Bachelet:2}},
+  {f:"2019-11-24",enc:"Activa",d:{Lavín:8,Matthei:0,Kast:7,Jadue:3,Bachelet:4}},
+  {f:"2019-12-24",enc:"Criteria",d:{Lavín:14,Matthei:0,Kast:9,Jadue:6,Bachelet:4}},
+  {f:"2019-12-20",enc:"Cadem",d:{Lavín:5,Matthei:0,Kast:5,Jadue:3,Bachelet:1}},
+  {f:"2019-12-20",enc:"Activa",d:{Lavín:12,Matthei:0,Kast:7,Jadue:6,Bachelet:3}},
+  // 2020
+  {f:"2020-02-20",enc:"Criteria",d:{Lavín:15,Matthei:0,Kast:10,Jadue:6,Jiles:0}},
+  {f:"2020-02-13",enc:"Cadem",d:{Lavín:4,Matthei:0,Kast:4,Jadue:3,Jiles:0}},
+  {f:"2020-02-20",enc:"Activa",d:{Lavín:14,Matthei:0,Kast:2,Jadue:4,Jiles:0}},
+  {f:"2020-04-03",enc:"Criteria",d:{Lavín:18,Matthei:0,Kast:8,Jadue:9,Jiles:0}},
+  {f:"2020-04-08",enc:"Cadem",d:{Lavín:10,Matthei:0,Kast:3,Jadue:3,Jiles:0}},
+  {f:"2020-06-10",enc:"Criteria",d:{Lavín:16,Matthei:2,Kast:7,Jadue:8,Jiles:0}},
+  {f:"2020-06-12",enc:"Cadem",d:{Lavín:6,Matthei:0,Kast:2,Jadue:3,Jiles:0}},
+  {f:"2020-06-25",enc:"Activa",d:{Lavín:13,Matthei:0,Kast:4,Jadue:9,Jiles:0}},
+  {f:"2020-07-28",enc:"Criteria",d:{Lavín:13,Matthei:2,Kast:6,Jadue:12,Jiles:0}},
+  {f:"2020-07-09",enc:"Cadem",d:{Lavín:7,Matthei:0,Kast:2,Jadue:6,Jiles:0}},
+  {f:"2020-08-28",enc:"Criteria",d:{Lavín:15,Matthei:8,Kast:7,Jadue:16,Jiles:2}},
+  {f:"2020-08-12",enc:"Cadem",d:{Lavín:8,Matthei:0,Kast:3,Jadue:7,Jiles:0}},
+  {f:"2020-08-28",enc:"Activa",d:{Lavín:23,Matthei:4,Kast:4,Jadue:9,Jiles:2}},
+  {f:"2020-09-25",enc:"Criteria",d:{Lavín:18,Matthei:8,Kast:7,Jadue:17,Jiles:3}},
+  {f:"2020-09-15",enc:"Cadem",d:{Lavín:7,Matthei:5,Kast:4,Jadue:7,Jiles:0}},
+  {f:"2020-09-26",enc:"Activa",d:{Lavín:17,Matthei:8,Kast:3,Jadue:12,Jiles:5}},
+  {f:"2020-10-31",enc:"Criteria",d:{Lavín:14,Matthei:8,Kast:7,Jadue:14,Jiles:7}},
+  {f:"2020-10-28",enc:"Cadem",d:{Lavín:6,Matthei:4,Kast:3,Jadue:6,Jiles:2}},
+  {f:"2020-10-30",enc:"Activa",d:{Lavín:13,Matthei:8,Kast:6,Jadue:16,Jiles:6}},
+  {f:"2020-11-11",enc:"Cadem",d:{Lavín:10,Matthei:5,Kast:2,Jadue:7,Jiles:4}},
+  {f:"2020-11-25",enc:"Activa",d:{Lavín:11,Matthei:7,Kast:2,Jadue:15,Jiles:13}},
+  {f:"2020-12-06",enc:"Criteria",d:{Lavín:10,Matthei:9,Kast:6,Jadue:15,Jiles:9}},
+  {f:"2020-12-09",enc:"Cadem",d:{Lavín:6,Matthei:6,Kast:2,Jadue:7,Jiles:4}},
+  {f:"2020-12-10",enc:"Activa",d:{Lavín:10,Matthei:4,Kast:4,Jadue:13,Jiles:16}},
+  {f:"2020-12-29",enc:"Cadem",d:{Lavín:5,Matthei:5,Kast:2,Jadue:7,Jiles:2}},
+  // 2021 pre-primaria
+  {f:"2021-01-13",enc:"Cadem",d:{Lavín:7,Matthei:4,Kast:3,Boric:2,Jadue:7,Jiles:2,Parisi:1}},
+  {f:"2021-01-12",enc:"Activa",d:{Lavín:17,Matthei:7,Kast:4,Boric:4,Jadue:15,Jiles:5,Parisi:5}},
+  {f:"2021-02-03",enc:"Cadem",d:{Lavín:4,Matthei:5,Kast:2,Boric:3,Jadue:6,Jiles:3,Parisi:2}},
+  {f:"2021-02-23",enc:"Activa",d:{Lavín:12,Matthei:7,Kast:7,Boric:2,Jadue:15,Jiles:12,Parisi:2}},
+  {f:"2021-02-26",enc:"Criteria",d:{Lavín:12,Matthei:8,Kast:7,Boric:2,Jadue:14,Jiles:6,Parisi:2}},
+  {f:"2021-03-05",enc:"Cadem",d:{Lavín:5,Matthei:4,Kast:3,Boric:0,Jadue:6,Jiles:2,Parisi:1}},
+  {f:"2021-03-20",enc:"Activa",d:{Lavín:14,Matthei:6,Kast:4,Boric:2,Jadue:11,Jiles:13,Parisi:1}},
+  {f:"2021-03-28",enc:"Criteria",d:{Lavín:11,Matthei:6,Kast:6,Boric:0,Jadue:11,Jiles:9,Parisi:0}},
+  {f:"2021-04-08",enc:"Cadem",d:{Lavín:14,Matthei:7,Kast:5,Boric:3,Jadue:11,Jiles:20,Parisi:0}},
+  {f:"2021-04-14",enc:"Activa",d:{Lavín:9,Matthei:5,Kast:4,Boric:2,Jadue:19,Jiles:18,Parisi:3}},
+  {f:"2021-04-29",enc:"Criteria",d:{Lavín:0,Matthei:7,Kast:6,Boric:2,Jadue:13,Jiles:15,Parisi:0}},
+  {f:"2021-05-20",enc:"Cadem",d:{Lavín:16,Matthei:0,Kast:5,Boric:5,Jadue:20,Jiles:7,Provoste:13,Parisi:0}},
+  {f:"2021-05-26",enc:"Activa",d:{Lavín:13,Matthei:0,Kast:5,Boric:2,Jadue:17,Jiles:7,Provoste:7,Parisi:5}},
+  {f:"2021-05-29",enc:"Criteria",d:{Lavín:14,Matthei:0,Kast:6,Boric:4,Jadue:16,Jiles:4,Provoste:9,Parisi:2}},
+  {f:"2021-06-02",enc:"Cadem",d:{Lavín:14,Matthei:0,Kast:7,Boric:5,Jadue:14,Jiles:8,Provoste:13,Parisi:6}},
+  {f:"2021-06-09",enc:"Activa",d:{Lavín:11,Matthei:0,Kast:4,Boric:2,Jadue:22,Jiles:4,Provoste:8,Parisi:6}},
+  {f:"2021-06-16",enc:"Cadem",d:{Lavín:13,Matthei:0,Kast:6,Boric:6,Jadue:13,Jiles:8,Provoste:13,Parisi:5}},
+  {f:"2021-06-23",enc:"Cadem",d:{Lavín:9,Matthei:0,Kast:6,Boric:6,Jadue:14,Jiles:6,Provoste:9,Parisi:4}},
+  {f:"2021-06-25",enc:"Activa",d:{Lavín:12,Matthei:0,Kast:3,Boric:7,Jadue:19,Jiles:3,Provoste:11,Parisi:4}},
+  {f:"2021-06-27",enc:"Criteria",d:{Lavín:13,Matthei:0,Kast:6,Boric:6,Jadue:18,Jiles:3,Provoste:9,Parisi:4}},
+  {f:"2021-07-07",enc:"Cadem",d:{Lavín:9,Matthei:0,Kast:7,Boric:7,Jadue:15,Jiles:7,Provoste:10,Parisi:4}},
+  {f:"2021-07-14",enc:"Cadem",d:{Lavín:11,Matthei:0,Kast:6,Boric:12,Jadue:11,Jiles:8,Provoste:9,Parisi:5}},
+  // 2021 post-primaria
+  {f:"2021-08-04",enc:"Cadem",d:{Kast:10,Boric:21,Sichel:24,Provoste:10,Parisi:0}},
+  {f:"2021-08-09",enc:"Activa",d:{Kast:11,Boric:16,Sichel:26,Provoste:9,Parisi:7}},
+  {f:"2021-08-11",enc:"Cadem",d:{Kast:9,Boric:24,Sichel:22,Provoste:9,Parisi:0}},
+  {f:"2021-08-25",enc:"Cadem",d:{Kast:10,Boric:20,Sichel:20,Provoste:13,Parisi:7}},
+  {f:"2021-09-01",enc:"Cadem",d:{Kast:12,Boric:23,Sichel:19,Provoste:12,Parisi:7}},
+  {f:"2021-09-08",enc:"Cadem",d:{Kast:12,Boric:31,Sichel:26,Provoste:12,Parisi:11}},
+  {f:"2021-09-08",enc:"Activa",d:{Kast:14,Boric:28,Sichel:18,Provoste:12,Parisi:11}},
+  {f:"2021-09-14",enc:"Cadem",d:{Kast:14,Boric:34,Sichel:24,Provoste:12,Parisi:8}},
+  {f:"2021-09-22",enc:"Cadem",d:{Kast:18,Boric:31,Sichel:23,Provoste:14,Parisi:7}},
+  {f:"2021-09-22",enc:"BW",d:{Kast:16,Boric:29,Sichel:24,Provoste:14,Parisi:7}},
+  {f:"2021-09-27",enc:"Activa",d:{Kast:17,Boric:30,Sichel:15,Provoste:11,Parisi:8}},
+  {f:"2021-10-01",enc:"Criteria",d:{Kast:17,Boric:26,Sichel:15,Provoste:11,Parisi:5}},
+  {f:"2021-10-06",enc:"Cadem",d:{Kast:21,Boric:29,Sichel:17,Provoste:18,Parisi:7}},
+  {f:"2021-10-06",enc:"Data Influye",d:{Kast:16,Boric:26,Sichel:12,Provoste:12,Parisi:5}},
+  {f:"2021-10-13",enc:"Cadem",d:{Kast:29,Boric:27,Sichel:10,Provoste:16,Parisi:8}},
+  {f:"2021-10-15",enc:"Activa",d:{Kast:20,Boric:31,Sichel:9,Provoste:17,Parisi:7}},
+  {f:"2021-10-21",enc:"Cadem",d:{Kast:31,Boric:27,Sichel:10,Provoste:16,Parisi:8}},
+  {f:"2021-10-26",enc:"Studio Público",d:{Kast:38,Boric:28,Sichel:11,Provoste:11,Parisi:6}},
+  {f:"2021-10-29",enc:"Criteria",d:{Kast:23,Boric:24,Sichel:8,Provoste:9,Parisi:8}},
+  {f:"2021-10-29",enc:"Feedback",d:{Kast:36,Boric:30,Sichel:11,Provoste:9,Parisi:4}},
+  {f:"2021-10-29",enc:"Data Influye",d:{Kast:27,Boric:32,Sichel:9,Provoste:13,Parisi:8}},
+  {f:"2021-10-31",enc:"Activa",d:{Kast:27,Boric:25,Sichel:9,Provoste:12,Parisi:11}},
+  {f:"2021-11-02",enc:"Activa",d:{Kast:27,Boric:24,Sichel:11,Provoste:14,Parisi:10}},
+  {f:"2021-11-02",enc:"AtlasIntel",d:{Kast:30,Boric:24,Sichel:13,Provoste:10,Parisi:13}},
+  {f:"2021-11-03",enc:"Cadem",d:{Kast:32,Boric:24,Sichel:10,Provoste:12,Parisi:13}},
+  {f:"2021-11-03",enc:"UDD",d:{Kast:25,Boric:22,Sichel:9,Provoste:10,Parisi:10}},
+  {f:"2021-11-05",enc:"AtlasIntel",d:{Kast:34,Boric:24,Sichel:10,Provoste:14,Parisi:11}},
+  {f:"2021-11-19",enc:"Cadem",d:{Kast:27,Boric:27,Sichel:13,Provoste:11,Parisi:12}},
+  // 2022
+  {f:"2022-10-27",enc:"Cadem",d:{Matthei:8,Kast:11,Jadue:1,Kaiser:0,Bachelet:3,Parisi:5}},
+  {f:"2022-12-29",enc:"Cadem",d:{Matthei:9,Kast:13,Jadue:1,Kaiser:0,Bachelet:3,Parisi:1}},
+  // 2023
+  {f:"2023-03-21",enc:"Activa",d:{Matthei:16,Kast:15,Jadue:0,Kaiser:0,Bachelet:5,Parisi:2}},
+  {f:"2023-04-05",enc:"Cadem",d:{Matthei:13,Kast:17,Jadue:1,Kaiser:0,Bachelet:3,Parisi:2}},
+  {f:"2023-04-11",enc:"Activa",d:{Matthei:11,Kast:15,Jadue:0,Kaiser:0,Bachelet:5,Parisi:4}},
+  {f:"2023-05-03",enc:"Cadem",d:{Matthei:13,Kast:20,Jadue:1,Kaiser:0,Bachelet:2,Parisi:2}},
+  {f:"2023-05-24",enc:"Activa",d:{Matthei:15,Kast:21,Jadue:0,Kaiser:0,Bachelet:2,Parisi:3}},
+  {f:"2023-06-07",enc:"Cadem",d:{Matthei:9,Kast:24,Jadue:1,Kaiser:0,Bachelet:3,Parisi:1}},
+  {f:"2023-06-27",enc:"Activa",d:{Matthei:10,Kast:19,Jadue:0,Kaiser:0,Bachelet:4,Parisi:3}},
+  {f:"2023-07-05",enc:"Cadem",d:{Matthei:8,Kast:21,Jadue:1,Kaiser:0,Bachelet:3,Parisi:2}},
+  {f:"2023-07-26",enc:"Cadem",d:{Matthei:14,Kast:20,Jadue:1,Kaiser:0,Bachelet:2,Parisi:1}},
+  {f:"2023-07-26",enc:"Activa",d:{Matthei:16,Kast:17,Jadue:0,Kaiser:0,Bachelet:5,Parisi:3}},
+  {f:"2023-08-16",enc:"Cadem",d:{Matthei:18,Kast:17,Jadue:1,Kaiser:0,Bachelet:2,Parisi:2}},
+  {f:"2023-08-28",enc:"Activa",d:{Matthei:17,Kast:15,Jadue:0,Kaiser:0,Bachelet:5,Parisi:2}},
+  {f:"2023-09-05",enc:"Criteria",d:{Matthei:18,Kast:19,Jadue:0,Kaiser:0,Bachelet:7,Parisi:1}},
+  {f:"2023-09-14",enc:"Cadem",d:{Matthei:16,Kast:16,Jadue:1,Kaiser:0,Bachelet:6,Parisi:1}},
+  {f:"2023-09-26",enc:"Activa",d:{Matthei:19,Kast:14,Jadue:0,Kaiser:0,Bachelet:6,Parisi:3}},
+  {f:"2023-10-04",enc:"Cadem",d:{Matthei:20,Kast:18,Jadue:1,Kaiser:0,Bachelet:5,Parisi:2}},
+  {f:"2023-10-25",enc:"Activa",d:{Matthei:20,Kast:15,Jadue:0,Kaiser:0,Bachelet:6,Parisi:3}},
+  {f:"2023-11-02",enc:"Criteria",d:{Matthei:18,Kast:21,Jadue:0,Kaiser:0,Bachelet:7,Parisi:2}},
+  {f:"2023-11-08",enc:"Cadem",d:{Matthei:19,Kast:17,Jadue:1,Kaiser:0,Bachelet:4,Parisi:4}},
+  {f:"2023-11-27",enc:"Activa",d:{Matthei:15,Kast:18,Jadue:0,Kaiser:0,Bachelet:4,Parisi:2}},
+  {f:"2023-12-02",enc:"Criteria",d:{Matthei:24,Kast:19,Jadue:0,Kaiser:0,Bachelet:5,Parisi:0}},
+  {f:"2023-12-20",enc:"Cadem",d:{Matthei:14,Kast:14,Jadue:1,Kaiser:0,Bachelet:3,Parisi:3}},
+  {f:"2023-12-26",enc:"Activa",d:{Matthei:23,Kast:14,Jadue:0,Kaiser:0,Bachelet:10,Parisi:2}},
+  // 2024
+  {f:"2024-01-11",enc:"Cadem",d:{Matthei:16,Kast:14,Kaiser:0,Bachelet:5,Parisi:1}},
+  {f:"2024-01-25",enc:"Activa",d:{Matthei:18,Kast:13,Kaiser:0,Bachelet:7,Parisi:2}},
+  {f:"2024-02-14",enc:"Cadem",d:{Matthei:22,Kast:19,Kaiser:1,Bachelet:6,Parisi:1}},
+  {f:"2024-02-27",enc:"Activa",d:{Matthei:26,Kast:11,Kaiser:0,Bachelet:8,Parisi:2}},
+  {f:"2024-03-14",enc:"Cadem",d:{Matthei:21,Kast:12,Kaiser:2,Bachelet:4,Parisi:2}},
+  {f:"2024-03-27",enc:"Activa",d:{Matthei:25,Kast:12,Kaiser:3,Bachelet:8,Parisi:3}},
+  {f:"2024-04-03",enc:"Cadem",d:{Matthei:25,Kast:12,Kaiser:1,Bachelet:4,Parisi:1}},
+  {f:"2024-04-17",enc:"Cadem",d:{Matthei:24,Kast:14,Kaiser:2,Bachelet:7,Parisi:1}},
+  {f:"2024-04-26",enc:"Activa",d:{Matthei:29,Kast:16,Kaiser:0,Bachelet:7,Parisi:0}},
+  {f:"2024-05-09",enc:"Cadem",d:{Matthei:24,Kast:14,Kaiser:2,Bachelet:3,Parisi:2}},
+  {f:"2024-05-29",enc:"Activa",d:{Matthei:26,Kast:12,Kaiser:2,Bachelet:10,Parisi:2}},
+  {f:"2024-06-12",enc:"Cadem",d:{Matthei:20,Kast:14,Kaiser:2,Bachelet:6,Parisi:2}},
+  {f:"2024-06-26",enc:"Activa",d:{Matthei:25,Kast:12,Kaiser:2,Bachelet:8,Parisi:0}},
+  {f:"2024-07-10",enc:"Cadem",d:{Matthei:19,Kast:11,Kaiser:2,Bachelet:9,Parisi:2}},
+  {f:"2024-07-24",enc:"Activa",d:{Matthei:25,Kast:14,Kaiser:4,Bachelet:11,Parisi:2}},
+  {f:"2024-08-07",enc:"Cadem",d:{Matthei:21,Kast:11,Kaiser:4,Bachelet:11,Parisi:1}},
+  {f:"2024-08-29",enc:"Activa",d:{Matthei:26,Kast:12,Kaiser:5,Bachelet:20,Parisi:0}},
+  {f:"2024-09-11",enc:"Cadem",d:{Matthei:26,Kast:9,Kaiser:4,Bachelet:11,Parisi:1}},
+  {f:"2024-09-25",enc:"Activa",d:{Matthei:22,Kast:15,Kaiser:0,Bachelet:16,Parisi:2}},
+  {f:"2024-10-09",enc:"Cadem",d:{Matthei:19,Kast:7,Kaiser:4,Bachelet:9,Parisi:1}},
+  {f:"2024-10-29",enc:"Activa",d:{Matthei:26,Kast:13,Kaiser:3,Bachelet:11,Parisi:2}},
+  {f:"2024-10-28",enc:"Cadem",d:{Matthei:31,Kast:13,Kaiser:8,Bachelet:10,Parisi:3}},
+  {f:"2024-11-13",enc:"Cadem",d:{Matthei:24,Kast:14,Kaiser:4,Bachelet:6,Parisi:2}},
+  {f:"2024-11-27",enc:"Activa",d:{Matthei:26,Kast:10,Kaiser:8,Bachelet:13,Parisi:2}},
+  {f:"2024-12-12",enc:"Cadem",d:{Matthei:26,Kast:8,Kaiser:5,Bachelet:7,Parisi:1}},
+  {f:"2024-12-26",enc:"Activa",d:{Matthei:29,Kast:12,Kaiser:5,Bachelet:10,Parisi:0}},
+  // 2025 pre-primaria UpCh
+  {f:"2025-01-09",enc:"Cadem",d:{Matthei:23,Kast:9,Kaiser:10,Bachelet:5,Parisi:2,Jara:0}},
+  {f:"2025-01-14",enc:"Panel Ciudadano",d:{Matthei:28,Kast:14,Kaiser:11,Bachelet:12,Parisi:4,Jara:0}},
+  {f:"2025-01-30",enc:"Activa",d:{Matthei:27,Kast:10,Kaiser:8,Bachelet:12,Parisi:1,Jara:0}},
+  {f:"2025-02-06",enc:"Cadem",d:{Matthei:20,Kast:8,Kaiser:13,Bachelet:12,Parisi:1,Jara:1}},
+  {f:"2025-02-24",enc:"Criteria",d:{Matthei:26,Kast:10,Kaiser:11,Bachelet:13,Parisi:0,Jara:0}},
+  {f:"2025-02-27",enc:"Activa",d:{Matthei:24,Kast:11,Kaiser:10,Bachelet:16,Parisi:2,Jara:0}},
+  {f:"2025-03-05",enc:"Cadem",d:{Matthei:18,Kast:11,Kaiser:13,Bachelet:10,Parisi:3,Jara:0}},
+  {f:"2025-03-12",enc:"Cadem",d:{Matthei:17,Kast:10,Kaiser:13,Bachelet:6,Parisi:1,Jara:1}},
+  {f:"2025-03-19",enc:"Cadem",d:{Matthei:20,Kast:10,Kaiser:11,Bachelet:5,Parisi:1,Jara:2}},
+  {f:"2025-03-26",enc:"Activa",d:{Matthei:24,Kast:12,Kaiser:11,Bachelet:6,Parisi:3,Jara:0}},
+  {f:"2025-04-02",enc:"Cadem",d:{Matthei:18,Kast:11,Kaiser:13,Bachelet:5,Parisi:2,Jara:0}},
+  {f:"2025-04-09",enc:"Cadem",d:{Matthei:20,Kast:14,Kaiser:15,Bachelet:0,Parisi:3,Jara:5}},
+  {f:"2025-04-23",enc:"Cadem",d:{Matthei:20,Kast:12,Kaiser:11,Bachelet:2,Parisi:2,Jara:4}},
+  {f:"2025-04-23",enc:"Activa",d:{Matthei:23,Kast:15,Kaiser:7,Bachelet:6,Parisi:2,Jara:4}},
+  {f:"2025-04-23",enc:"Panel Ciudadano",d:{Matthei:23,Kast:16,Kaiser:13,Bachelet:0,Parisi:6,Jara:7}},
+  {f:"2025-05-07",enc:"Cadem",d:{Matthei:20,Kast:14,Kaiser:6,Bachelet:0,Parisi:4,Jara:4}},
+  {f:"2025-05-14",enc:"Cadem",d:{Matthei:17,Kast:17,Kaiser:6,Bachelet:0,Parisi:3,Jara:5}},
+  {f:"2025-05-22",enc:"Cadem",d:{Matthei:17,Kast:16,Kaiser:6,Bachelet:0,Parisi:4,Jara:5}},
+  {f:"2025-05-28",enc:"Activa",d:{Matthei:22,Kast:18,Kaiser:7,Bachelet:0,Parisi:6,Jara:7}},
+  {f:"2025-06-04",enc:"Cadem",d:{Matthei:16,Kast:17,Kaiser:7,Bachelet:0,Parisi:5,Jara:8}},
+  {f:"2025-06-11",enc:"Cadem",d:{Matthei:14,Kast:18,Kaiser:5,Bachelet:0,Parisi:5,Jara:13}},
+  {f:"2025-06-25",enc:"Cadem",d:{Matthei:14,Kast:19,Kaiser:4,Bachelet:0,Parisi:5,Jara:16}},
+  // 2025 post-primaria UpCh
+  {f:"2025-07-02",enc:"Cadem",d:{Matthei:18,Kast:22,Kaiser:6,Parisi:10,Jara:26}},
+  {f:"2025-07-09",enc:"Cadem",d:{Matthei:14,Kast:27,Kaiser:8,Parisi:9,Jara:27}},
+  {f:"2025-07-17",enc:"Cadem",d:{Matthei:14,Kast:27,Kaiser:8,Parisi:9,Jara:27}},
+  {f:"2025-07-24",enc:"Cadem",d:{Matthei:14,Kast:30,Kaiser:5,Parisi:11,Jara:27}},
+  {f:"2025-07-30",enc:"Cadem",d:{Matthei:11,Kast:29,Kaiser:6,Parisi:12,Jara:31}},
+  {f:"2025-07-30",enc:"Activa",d:{Matthei:16,Kast:22,Kaiser:6,Parisi:9,Jara:25}},
+  {f:"2025-07-30",enc:"Panel Ciudadano",d:{Matthei:14,Kast:29,Kaiser:8,Parisi:8,Jara:27}},
+  {f:"2025-07-30",enc:"BW",d:{Matthei:17,Kast:28,Kaiser:12,Parisi:5,Jara:36}},
+  {f:"2025-08-07",enc:"Cadem",d:{Matthei:16,Kast:28,Kaiser:5,Parisi:12,Jara:26}},
+  {f:"2025-08-13",enc:"Activa",d:{Matthei:14,Kast:21,Kaiser:8,Parisi:8,Jara:26}},
+  {f:"2025-08-20",enc:"Cadem",d:{Matthei:14,Kast:28,Kaiser:7,Parisi:11,Jara:27}},
+  {f:"2025-08-27",enc:"Cadem",d:{Matthei:14,Kast:27,Kaiser:8,Parisi:11,Jara:26}},
+  {f:"2025-08-27",enc:"Criteria",d:{Matthei:14,Kast:28,Kaiser:8,Parisi:9,Jara:27}},
+  {f:"2025-08-27",enc:"Panel Ciudadano",d:{Matthei:14,Kast:28,Kaiser:7,Parisi:10,Jara:25}},
+  {f:"2025-08-27",enc:"BW",d:{Matthei:15,Kast:30,Kaiser:11,Parisi:5,Jara:32}},
+  {f:"2025-09-03",enc:"Cadem",d:{Matthei:16,Kast:26,Kaiser:8,Parisi:11,Jara:28}},
+  {f:"2025-09-03",enc:"Panel Ciudadano",d:{Matthei:18,Kast:27,Kaiser:6,Parisi:10,Jara:24}},
+  {f:"2025-09-03",enc:"BW",d:{Matthei:18,Kast:28,Kaiser:10,Parisi:5,Jara:32}},
+  {f:"2025-09-10",enc:"Cadem",d:{Matthei:18,Kast:25,Kaiser:8,Parisi:11,Jara:26}},
+  {f:"2025-09-17",enc:"Cadem",d:{Matthei:16,Kast:24,Kaiser:9,Parisi:9,Jara:26}},
+  {f:"2025-09-24",enc:"Cadem",d:{Matthei:17,Kast:23,Kaiser:11,Parisi:9,Jara:26}},
+  {f:"2025-09-26",enc:"Panel Ciudadano",d:{Matthei:16,Kast:25,Kaiser:10,Parisi:9,Jara:23}},
+  {f:"2025-09-26",enc:"BW",d:{Matthei:19,Kast:26,Kaiser:11,Parisi:6,Jara:30}},
+  {f:"2025-10-01",enc:"Cadem",d:{Matthei:15,Kast:23,Kaiser:11,Parisi:10,Jara:27}},
+  {f:"2025-10-02",enc:"Panel Ciudadano",d:{Matthei:16,Kast:25,Kaiser:10,Parisi:8,Jara:27}},
+  {f:"2025-10-07",enc:"BW",d:{Matthei:17,Kast:25,Kaiser:14,Parisi:7,Jara:31}},
+  {f:"2025-10-14",enc:"Panel Ciudadano",d:{Matthei:16,Kast:23,Kaiser:13,Parisi:9,Jara:24}},
+  {f:"2025-10-15",enc:"Cadem",d:{Matthei:14,Kast:22,Kaiser:12,Parisi:11,Jara:26}},
+  {f:"2025-10-21",enc:"BW",d:{Matthei:19,Kast:25,Kaiser:18,Parisi:6,Jara:29}},
+  {f:"2025-10-22",enc:"Cadem",d:{Matthei:13,Kast:20,Kaiser:14,Parisi:11,Jara:27}},
+  {f:"2025-10-22",enc:"Panel Ciudadano",d:{Matthei:16,Kast:22,Kaiser:13,Parisi:11,Jara:25}},
+  {f:"2025-10-28",enc:"Cadem",d:{Matthei:14,Kast:23,Kaiser:16,Parisi:12,Jara:30}},
+  {f:"2025-11-06",enc:"Cadem",d:{Matthei:13,Kast:23,Kaiser:17,Parisi:12,Jara:31}},
+  {f:"2025-11-06",enc:"Panel Ciudadano",d:{Matthei:14,Kast:22,Kaiser:17,Parisi:12,Jara:29}},
+  {f:"2025-11-06",enc:"Criteria",d:{Matthei:16,Kast:22,Kaiser:17,Parisi:11,Jara:29}},
+  {f:"2025-11-12",enc:"BW",d:{Matthei:18,Kast:21,Kaiser:19,Parisi:10,Jara:29}},
+  {f:"2025-11-12",enc:"LCN",d:{Matthei:16,Kast:20,Kaiser:20,Parisi:6,Jara:34}},
+  {f:"2025-11-13",enc:"Cadem",d:{Matthei:14,Kast:22,Kaiser:18,Parisi:13,Jara:29}},
+  {f:"2025-11-13",enc:"Panel Ciudadano",d:{Matthei:14,Kast:22,Kaiser:17,Parisi:14,Jara:29}},
+  {f:"2025-11-14",enc:"Activa",d:{Matthei:13,Kast:19,Kaiser:15,Parisi:17,Jara:31}},
+  {f:"2025-11-15",enc:"AtlasIntel",d:{Matthei:15,Kast:19,Kaiser:16,Parisi:14,Jara:33}},
+];
+
+const PERIODOS = [
+  {id:"p1", label:"2018–2021 pre-primaria", desde:"2018-01-01", hasta:"2021-07-17", candidatos:["Lavín","Jadue","Jiles","Matthei","Kast","Boric","Bachelet","Provoste"]},
+  {id:"p2", label:"2021 campaña", desde:"2021-07-18", hasta:"2021-11-21", candidatos:["Boric","Kast","Sichel","Provoste","Parisi"]},
+  {id:"p3", label:"2022–2024", desde:"2022-01-01", hasta:"2024-12-31", candidatos:["Matthei","Kast","Kaiser","Bachelet","Jadue","Parisi"]},
+  {id:"p4", label:"2025", desde:"2025-01-01", hasta:"2025-12-31", candidatos:["Jara","Kast","Matthei","Kaiser","Parisi"]},
+];
+
+const COLORES = {
+  Lavín:"#1d4ed8", Matthei:"#3b82f6", Kast:"#dc2626", Boric:"#16a34a",
+  Jadue:"#15803d", Jiles:"#7c3aed", Sichel:"#0891b2", Provoste:"#d97706",
+  Jara:"#c2410c", Kaiser:"#9333ea", Parisi:"#f59e0b", Bachelet:"#f43f5e", Winter:"#4ade80",
+};
+
+const HITOS = [
+  {f:"2021-07-18",label:"Primarias 2021"},
+  {f:"2021-11-21",label:"1ª vuelta 2021"},
+  {f:"2021-12-19",label:"2ª vuelta 2021"},
+  {f:"2025-08-13",label:"Primaria UpCh"},
+  {f:"2025-11-16",label:"1ª vuelta 2025"},
+];
+
+// Promediar por semana (7 días)
+function agruparPorSemana(datos, candidatos) {
+  const semanas = {};
+  datos.forEach(row => {
+    const d = new Date(row.f + "T12:00:00");
+    const lunes = new Date(d);
+    lunes.setDate(d.getDate() - d.getDay() + 1);
+    const key = lunes.toISOString().slice(0,10);
+    if (!semanas[key]) semanas[key] = {counts: {}, sums: {}};
+    candidatos.forEach(c => {
+      if (row.d[c] !== undefined && row.d[c] > 0) {
+        semanas[key].sums[c] = (semanas[key].sums[c] || 0) + row.d[c];
+        semanas[key].counts[c] = (semanas[key].counts[c] || 0) + 1;
+      }
+    });
+  });
+  return Object.entries(semanas).sort((a,b)=>a[0].localeCompare(b[0])).map(([fecha, v]) => {
+    const obj = {fecha};
+    candidatos.forEach(c => {
+      if (v.counts[c]) obj[c] = Math.round(v.sums[c] / v.counts[c] * 10) / 10;
+    });
+    return obj;
+  });
+}
+
+const fmtFecha = f => new Date(f+"T12:00:00").toLocaleDateString("es-CL",{month:"short",year:"2-digit"});
+
+const Tooltip_ = ({active,payload,label}) => {
+  if (!active || !payload?.length) return null;
+  const sorted = [...payload].filter(p=>p.value).sort((a,b)=>b.value-a.value);
+  return (
+    <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:8,padding:"10px 14px"}}>
+      <p style={{color:"#94a3b8",fontSize:11,marginBottom:6}}>{fmtFecha(label)}</p>
+      {sorted.map(p=>(
+        <div key={p.name} style={{display:"flex",justifyContent:"space-between",gap:20,marginBottom:2}}>
+          <span style={{color:p.color,fontWeight:700,fontSize:13}}>{p.name}</span>
+          <span style={{color:"#f1f5f9",fontSize:13}}>{p.value}%</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default function App() {
+  const [pid, setPid] = useState("p4");
+  const periodo = PERIODOS.find(p=>p.id===pid);
+
+  const datos = useMemo(() => {
+    const fd = RAW.filter(r => r.f >= periodo.desde && r.f <= periodo.hasta);
+    return agruparPorSemana(fd, periodo.candidatos);
+  }, [pid]);
+
+  const hitosP = HITOS.filter(h => h.f >= periodo.desde && h.f <= periodo.hasta);
+
+  const lider = useMemo(() => {
+    const ult = datos[datos.length-1];
+    if (!ult) return null;
+    let max=-1, nom="";
+    periodo.candidatos.forEach(c=>{ if((ult[c]||0)>max){max=ult[c]||0;nom=c;} });
+    return {nombre:nom, pct:max};
+  }, [datos]);
+
+  return (
+    <div style={{background:"#f8f9fa",minHeight:"100vh",padding:"24px 16px",fontFamily:"system-ui,sans-serif",color:"#1e293b"}}>
+      <div style={{maxWidth:900,margin:"0 auto"}}>
+        <h1 style={{fontSize:20,fontWeight:700,marginBottom:4,color:"#0f172a"}}>Encuestas presidenciales Chile 2018–2025</h1>
+        <p style={{fontSize:12,color:"#64748b",marginBottom:20}}>
+          Promedio semanal de todas las encuestadoras disponibles · Fuente: Wikipedia
+        </p>
+
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20}}>
+          {PERIODOS.map(p=>(
+            <button key={p.id} onClick={()=>setPid(p.id)} style={{
+              padding:"6px 16px",borderRadius:20,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,
+              background:pid===p.id?"#3b82f6":"#1e293b",
+              color:pid===p.id?"#fff":"#94a3b8",transition:"all .2s"
+            }}>{p.label}</button>
+          ))}
+        </div>
+
+        {lider && (
+          <div style={{background:"#e2e8f0",borderRadius:10,padding:"10px 18px",marginBottom:18,
+            borderLeft:`4px solid ${COLORES[lider.nombre]||"#3b82f6"}`}}>
+            <span style={{fontSize:12,color:"#475569"}}>Líder en última medición — </span>
+            <span style={{fontWeight:700,color:COLORES[lider.nombre],fontSize:15}}>{lider.nombre}</span>
+            <span style={{color:"#0f172a",fontSize:15}}> · {lider.pct}%</span>
+          </div>
+        )}
+
+        <div style={{background:"#ffffff",borderRadius:12,padding:"20px 8px 8px 0",border:"1px solid #e2e8f0"}}>
+          <ResponsiveContainer width="100%" height={380}>
+            <LineChart data={datos} margin={{top:10,right:24,left:0,bottom:10}}>
+              <XAxis dataKey="fecha" tickFormatter={fmtFecha} tick={{fontSize:11,fill:"#64748b"}} tickLine={false} axisLine={false} interval="preserveStartEnd"/>
+              <YAxis domain={[0,50]} tick={{fontSize:11,fill:"#64748b"}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`} width={36}/>
+              <Tooltip content={<Tooltip_/>}/>
+              <Legend wrapperStyle={{fontSize:13,paddingTop:12}} formatter={v=><span style={{color:COLORES[v]||"#94a3b8"}}>{v}</span>}/>
+              {hitosP.map(h=>(
+                <ReferenceLine key={h.f} x={h.f} stroke="#475569" strokeDasharray="4 3"
+                  label={{value:h.label,position:"insideTopRight",fontSize:10,fill:"#64748b"}}/>
+              ))}
+              {periodo.candidatos.map(c=>(
+                <Line key={c} type="monotone" dataKey={c} stroke={COLORES[c]||"#999"}
+                  strokeWidth={2.5} dot={false} connectNulls activeDot={{r:5}}/>
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <p style={{fontSize:11,color:"#475569",marginTop:10,textAlign:"center"}}>
+          Encuestadoras incluidas: Cadem · Criteria · Activa · Panel Ciudadano · BW · LCN · AtlasIntel · Data Influye · Feedback · Studio Público · UDD · CEP
+        </p>
+      </div>
+    </div>
+  );
+}
